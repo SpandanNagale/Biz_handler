@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}New / Open Trip{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">New / Open Route Trip</h1>
+<div class="card" style="max-width: 420px;">
+  <div class="card-body">
+    <p class="text-muted small">Pick a route and date. If a trip already exists for that route+date, it will be opened instead of creating a duplicate.</p>
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label class="form-label">Route</label>
+        <select name="route_id" class="form-select" required>
+          <option value="">Select route</option>
+          {% for r in routes %}
+          <option value="{{ r.id }}" {% if preselect_route_id == r.id %}selected{% endif %}>{{ r.name }} ({{ r.weekday_name }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Date</label>
+        <input type="date" name="date" class="form-control" value="{{ today }}" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Open Trip</button>
+      <a href="{{ url_for('trips.list_trips') }}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

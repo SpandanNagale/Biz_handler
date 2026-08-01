@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Dashboard — {{ today.isoformat() }}</h1>
+
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="card card-kpi">
+      <div class="card-body">
+        <div class="text-muted small">Today's Sale Value</div>
+        <div class="h3 mb-0">₹{{ "%.2f"|format(total_sale_value) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card card-kpi">
+      <div class="card-body">
+        <div class="text-muted small">Today's Collected</div>
+        <div class="h3 mb-0 balance-zero">₹{{ "%.2f"|format(total_collected) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card card-kpi">
+      <div class="card-body">
+        <div class="text-muted small">Today's Pending</div>
+        <div class="h3 mb-0 balance-positive">₹{{ "%.2f"|format(total_pending) }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-6">
+    <h2 class="h5">Today's Product Breakdown</h2>
+    <div class="table-responsive">
+      <table class="table table-striped bg-white">
+        <thead><tr><th>Product</th><th>Sale Value</th></tr></thead>
+        <tbody>
+          {% for name, amount in product_breakdown.items() %}
+          <tr><td>{{ name }}</td><td>₹{{ "%.2f"|format(amount) }}</td></tr>
+          {% else %}
+          <tr><td colspan="2" class="text-center text-muted">No sales recorded today.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <h2 class="h5">Top Pending Stores</h2>
+    <div class="table-responsive">
+      <table class="table table-striped bg-white">
+        <thead><tr><th>Store</th><th>Balance</th></tr></thead>
+        <tbody>
+          {% for store, bal in top_pending %}
+          <tr>
+            <td><a href="{{ url_for('stores.store_profile', store_id=store.id) }}">{{ store.name }}</a></td>
+            <td class="balance-positive">₹{{ "%.2f"|format(bal) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="2" class="text-center text-muted">No pending balances.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

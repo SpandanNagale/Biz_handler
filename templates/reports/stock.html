@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Stock Dashboard{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Stock / Leftover Dashboard</h1>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-auto">
+    <input type="date" name="from" class="form-control" value="{{ date_from.isoformat() if date_from else '' }}">
+  </div>
+  <div class="col-auto">
+    <input type="date" name="to" class="form-control" value="{{ date_to.isoformat() if date_to else '' }}">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-outline-secondary">Filter</button>
+  </div>
+</form>
+
+<div class="table-responsive">
+  <table class="table table-striped bg-white align-middle">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Produced</th>
+        <th>Dispatched</th>
+        <th>Warehouse Stock</th>
+        <th>Returned</th>
+        <th>Sold</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.product.name }}</td>
+        <td>{{ row.produced }}</td>
+        <td>{{ row.dispatched }}</td>
+        <td>{{ row.warehouse_stock }}</td>
+        <td>{{ row.returned }}</td>
+        <td>{{ row.sold }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="text-center text-muted">No products yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="text-muted small">Warehouse Stock = Produced − Dispatched. Sold = Dispatched − Returned (returns not yet entered count as 0, so Sold is provisional until a trip is fully reconciled).</p>
+{% endblock %}

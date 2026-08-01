@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Routes{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3">Routes</h1>
+  <a href="{{ url_for('routes_bp.new_route') }}" class="btn btn-primary">+ New Route</a>
+</div>
+<div class="table-responsive">
+  <table class="table table-striped bg-white align-middle">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Weekday</th>
+        <th>Stores</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in routes %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td>{{ r.weekday_name }}</td>
+        <td>{{ r.stores|length }}</td>
+        <td>
+          {% if r.active %}<span class="badge bg-success">Active</span>
+          {% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}
+        </td>
+        <td class="text-end">
+          <a href="{{ url_for('routes_bp.edit_route', route_id=r.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+          <a href="{{ url_for('trips.new_trip', route_id=r.id) }}" class="btn btn-sm btn-outline-primary">New Trip</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-center text-muted">No routes yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

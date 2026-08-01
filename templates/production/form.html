@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}New Production Entry{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">New Production Entry</h1>
+<div class="card" style="max-width: 480px;">
+  <div class="card-body">
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label class="form-label">Date</label>
+        <input type="date" name="date" class="form-control" value="{{ form_data.date if form_data else '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Product</label>
+        <select name="product_id" class="form-select" required>
+          <option value="">Select product</option>
+          {% for p in products %}
+          <option value="{{ p.id }}" {% if form_data and form_data.product_id|string == p.id|string %}selected{% endif %}>{{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Quantity Produced (units)</label>
+        <input type="number" step="1" min="0" name="quantity_produced" class="form-control" value="{{ form_data.quantity_produced if form_data else '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Notes</label>
+        <textarea name="notes" class="form-control" rows="2">{{ form_data.notes if form_data else '' }}</textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Save</button>
+      <a href="{{ url_for('production.list_production') }}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

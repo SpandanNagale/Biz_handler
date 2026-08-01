@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+
+# Environment variables — NEVER commit secrets
+.env
+.env.local
+.env.production
+
+# Vercel
+.vercel/
+
+# Local SQLite (if ever used for quick local testing instead of Supabase)
+*.db
+*.sqlite3

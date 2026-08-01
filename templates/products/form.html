@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Product' if product else 'New Product' }}{% endblock %}
+{% block content %}
+{% set d = form_data or product %}
+<h1 class="h3 mb-3">{{ 'Edit Product' if product else 'New Product' }}</h1>
+<div class="card" style="max-width: 480px;">
+  <div class="card-body">
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label class="form-label">Name</label>
+        <input type="text" name="name" class="form-control" value="{{ d.name if d else '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Unit Price (informational MRP per piece)</label>
+        <input type="number" step="0.01" name="unit_price" class="form-control" value="{{ d.unit_price if d else '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Bulk Size (e.g. 100 — how many units this bulk price covers)</label>
+        <input type="number" step="1" min="1" name="bulk_size" class="form-control" value="{{ d.bulk_size if d else '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Bulk Price (e.g. ₹160 for that many units — used to derive the per-unit rate for all sales)</label>
+        <input type="number" step="0.01" name="bulk_price" class="form-control" value="{{ d.bulk_price if d else '' }}" required>
+      </div>
+      <div class="form-check mb-3">
+        <input type="checkbox" name="active" class="form-check-input" id="activeCheck"
+          {% if (d.active if d else true) %}checked{% endif %}>
+        <label class="form-check-label" for="activeCheck">Active</label>
+      </div>
+      <button type="submit" class="btn btn-primary">Save</button>
+      <a href="{{ url_for('products.list_products') }}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

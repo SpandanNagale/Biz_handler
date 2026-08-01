@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}{{ store.name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="h3 mb-0">{{ store.name }}</h1>
+    <div class="text-muted">{{ store.area or "" }} {{ ("· " ~ store.contact) if store.contact else "" }} {{ ("· Route: " ~ store.route.name) if store.route else "" }}</div>
+  </div>
+  <div class="text-end">
+    <div class="text-muted small">Current Balance</div>
+    <div class="h3 {{ 'balance-positive' if balance > 0 else 'balance-zero' }}">₹{{ "%.2f"|format(balance) }}</div>
+  </div>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-auto">
+    <input type="date" name="from" class="form-control" value="{{ date_from.isoformat() if date_from else '' }}">
+  </div>
+  <div class="col-auto">
+    <input type="date" name="to" class="form-control" value="{{ date_to.isoformat() if date_to else '' }}">
+  </div>
+  <div class="col-auto">
+    <select name="product_id" class="form-select">
+      <option value="">All products</option>
+      {% for p in products %}
+      <option value="{{ p.id }}" {% if product_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-outline-secondary">Filter</button>
+  </div>
+</form>
+
+<div class="row">
+  <div class="col-lg-8">
+    <h2 class="h5">Sales History</h2>
+    <div class="table-responsive">
+      <table class="table table-striped bg-white align-middle">
+        <thead>
+          <tr>
+            <th>Date</th><th>Product</th><th>Qty</th><th>Amount</th><th>Collected</th><th>Pending</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sales %}
+          <tr>
+            <td>{{ s.date.isoformat() }}</td>
+            <td>{{ s.product.name }}</td>
+            <td>{{ s.qty_sold }}</td>
+            <td>₹{{ "%.2f"|format(s.amount) }}</td>
+            <td>₹{{ "%.2f"|format(s.amount_collected) }}</td>
+            <td>₹{{ "%.2f"|format(s.amount_pending) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center text-muted">No sales found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="h5 mt-4">Standalone Payments Received</h2>
+    <div class="table-responsive">
+      <table class="table table-striped bg-white align-middle">
+        <thead><tr><th>Date</th><th>Amount</th><th>Notes</th></tr></thead>
+        <tbody>
+          {% for p in payments %}
+          <tr>
+            <td>{{ p.date.isoformat() }}</td>
+            <td>₹{{ "%.2f"|format(p.amount) }}</td>
+            <td>{{ p.notes or "" }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="3" class="text-center text-muted">No standalone payments found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-4">
+      <div class="card-body">
+        <h2 class="h5">Record a Payment</h2>
+        <p class="text-muted small">For dues collected outside of a route trip visit.</p>
+        <form method="post" action="{{ url_for('stores.new_payment', store_id=store.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label class="form-label">Date</label>
+            <input type="date" name="date" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Amount</label>
+            <input type="number" step="0.01" min="0.01" name="amount" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea name="notes" class="form-control" rows="2"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Record Payment</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h2 class="h5">Custom Pricing</h2>
+        <p class="text-muted small">Leave blank to use the product's normal price. Only fill in products where this store gets a different rate.</p>
+        <form method="post" action="{{ url_for('stores.save_prices', store_id=store.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {% for p in active_products %}
+          <div class="mb-2">
+            <label class="form-label small mb-0">{{ p.name }} <span class="text-muted">(normal: ₹{{ "%.4f"|format(p.price_per_unit) }}/unit)</span></label>
+            <input type="number" step="0.0001" min="0" name="price_{{ p.id }}" class="form-control form-control-sm"
+              placeholder="normal price"
+              value="{{ overrides[p.id].price_per_unit if p.id in overrides else '' }}">
+          </div>
+          {% else %}
+          <p class="text-muted small">No active products yet.</p>
+          {% endfor %}
+          {% if active_products %}
+          <button type="submit" class="btn btn-outline-primary btn-sm w-100 mt-2">Save Custom Pricing</button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

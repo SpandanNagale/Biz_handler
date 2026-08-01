@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Production Log{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3">Production Log</h1>
+  <a href="{{ url_for('production.new_production') }}" class="btn btn-primary">+ New Entry</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-auto">
+    <input type="date" name="from" class="form-control" value="{{ date_from.isoformat() if date_from else '' }}">
+  </div>
+  <div class="col-auto">
+    <input type="date" name="to" class="form-control" value="{{ date_to.isoformat() if date_to else '' }}">
+  </div>
+  <div class="col-auto">
+    <select name="product_id" class="form-select">
+      <option value="">All products</option>
+      {% for p in products %}
+      <option value="{{ p.id }}" {% if product_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-outline-secondary">Filter</button>
+  </div>
+</form>
+
+<div class="table-responsive">
+  <table class="table table-striped bg-white align-middle">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Product</th>
+        <th>Quantity Produced (units)</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.date.isoformat() }}</td>
+        <td>{{ log.product.name }}</td>
+        <td>{{ log.quantity_produced }}</td>
+        <td>{{ log.notes or "" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="text-center text-muted">No production entries found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

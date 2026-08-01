@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Route Trips{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3">Route Trips</h1>
+  <a href="{{ url_for('trips.new_trip') }}" class="btn btn-primary">+ New / Open Trip</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-auto">
+    <select name="route_id" class="form-select">
+      <option value="">All routes</option>
+      {% for r in routes %}
+      <option value="{{ r.id }}" {% if route_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <input type="date" name="from" class="form-control" value="{{ date_from.isoformat() if date_from else '' }}">
+  </div>
+  <div class="col-auto">
+    <input type="date" name="to" class="form-control" value="{{ date_to.isoformat() if date_to else '' }}">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-outline-secondary">Filter</button>
+  </div>
+</form>
+
+<div class="table-responsive">
+  <table class="table table-striped bg-white align-middle">
+    <thead>
+      <tr><th>Date</th><th>Route</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for t in trips %}
+      <tr>
+        <td>{{ t.date.isoformat() }}</td>
+        <td>{{ t.route.name }}</td>
+        <td>
+          {% if t.status == 'completed' %}<span class="badge bg-success">Completed</span>
+          {% elif t.status == 'in_progress' %}<span class="badge bg-warning text-dark">In Progress</span>
+          {% else %}<span class="badge bg-secondary">Loaded</span>{% endif %}
+        </td>
+        <td class="text-end">
+          <a href="{{ url_for('trips.trip_entry', trip_id=t.id) }}" class="btn btn-sm btn-outline-primary">Open</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="text-center text-muted">No route trips found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

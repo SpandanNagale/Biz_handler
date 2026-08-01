@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Route' if route else 'New Route' }}{% endblock %}
+{% block content %}
+{% set d = form_data or route %}
+<h1 class="h3 mb-3">{{ 'Edit Route' if route else 'New Route' }}</h1>
+<div class="card" style="max-width: 480px;">
+  <div class="card-body">
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label class="form-label">Name</label>
+        <input type="text" name="name" class="form-control" value="{{ d.name if d else '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Weekday (expected day — not a hard constraint)</label>
+        <select name="weekday" class="form-select" required>
+          {% for wd in weekdays %}
+          <option value="{{ loop.index0 }}" {% if d and d.weekday|string == loop.index0|string %}selected{% endif %}>{{ wd }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-check mb-3">
+        <input type="checkbox" name="active" class="form-check-input" id="activeCheck"
+          {% if (d.active if d else true) %}checked{% endif %}>
+        <label class="form-check-label" for="activeCheck">Active</label>
+      </div>
+      <button type="submit" class="btn btn-primary">Save</button>
+      <a href="{{ url_for('routes_bp.list_routes') }}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+
+{% if route %}
+<h2 class="h5 mt-4">Assigned Stores</h2>
+<ul class="list-group" style="max-width: 480px;">
+  {% for s in route.stores %}
+  <li class="list-group-item d-flex justify-content-between align-items-center">
+    {{ s.name }}
+    <a href="{{ url_for('stores.edit_store', store_id=s.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+  </li>
+  {% else %}
+  <li class="list-group-item text-muted">No stores assigned yet. Assign a route from a store's edit page.</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

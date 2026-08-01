@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Trip: {{ trip.route.name }} — {{ trip.date.isoformat() }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="h3 mb-0">{{ trip.route.name }} — {{ trip.date.isoformat() }}</h1>
+    <div class="text-muted">
+      {% if trip.status == 'completed' %}<span class="badge bg-success">Completed</span>
+      {% elif trip.status == 'in_progress' %}<span class="badge bg-warning text-dark">In Progress</span>
+      {% else %}<span class="badge bg-secondary">Loaded</span>{% endif %}
+    </div>
+  </div>
+</div>
+
+{% if recon %}
+  {% set mismatches = recon | selectattr('mismatch') | list %}
+  {% if mismatches %}
+  <div class="alert alert-warning">
+    <strong>Reconciliation mismatch</strong> — qty sent doesn't equal qty returned + qty sold to stores for:
+    <ul class="mb-0">
+      {% for r in mismatches %}
+      <li>{{ r.product.name }}: sent {{ r.qty_sent }}, returned {{ r.qty_returned }}, sold to stores {{ r.qty_sold_from_stores }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+{% endif %}
+
+<div class="card mb-4">
+  <div class="card-header">1. Dispatch — Quantity Sent (units)</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('trips.save_dispatch', trip_id=trip.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead><tr><th>Product</th><th>Price / Unit</th><th style="max-width:140px;">Qty Sent (units)</th></tr></thead>
+          <tbody>
+            {% for p in products %}
+            <tr>
+              <td>{{ p.name }}</td>
+              <td>₹{{ "%.4f"|format(p.price_per_unit) }}</td>
+              <td>
+                <input type="number" step="1" min="0" name="qty_sent_{{ p.id }}" class="form-control"
+                  value="{{ items_by_product[p.id].qty_sent if p.id in items_by_product else '' }}">
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <button type="submit" class="btn btn-primary">Save Dispatch</button>
+    </form>
+  </div>
+</div>
+
+{% if trip.items %}
+<div class="card mb-4">
+  <div class="card-header">2. Per-Store Sales &amp; Collections</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('trips.save_sales', trip_id=trip.id) }}" id="salesForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="table-responsive">
+        <table class="table align-middle table-sm" id="salesTable">
+          <thead>
+            <tr>
+              <th rowspan="2">Store</th>
+              <th rowspan="2">Current Balance</th>
+              {% for item in trip.items %}
+              <th colspan="3" class="text-center">{{ item.product.name }}</th>
+              {% endfor %}
+            </tr>
+            <tr>
+              {% for item in trip.items %}
+              <th>Qty Sold (units)</th><th>Collected</th><th>Pending</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for store in stores %}
+            <tr>
+              <td><a href="{{ url_for('stores.store_profile', store_id=store.id) }}">{{ store.name }}</a></td>
+              <td class="{{ 'balance-positive' if balances[store.id] > 0 else 'balance-zero' }}">
+                ₹{{ "%.2f"|format(balances[store.id]) }}
+              </td>
+              {% for item in trip.items %}
+              {% set sale = sales_by_key.get((store.id, item.product_id)) %}
+              {% set price = effective_prices[(store.id, item.product_id)] %}
+              <td>
+                <input type="number" step="1" min="0" class="form-control qty-input"
+                  data-price="{{ price }}"
+                  name="qty_sold_{{ store.id }}_{{ item.product_id }}"
+                  value="{{ sale.qty_sold if sale else '' }}"
+                  {% if price != item.product.price_per_unit %}
+                  title="Custom price for this store: ₹{{ '%.4f'|format(price) }}/unit (normal: ₹{{ '%.4f'|format(item.product.price_per_unit) }})"
+                  {% endif %}>
+                {% if price != item.product.price_per_unit %}
+                <span class="badge bg-info text-dark" title="Custom price: ₹{{ '%.4f'|format(price) }}/unit">₹{{ '%.2f'|format(price) }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <input type="number" step="0.01" min="0" class="form-control collected-input"
+                  name="collected_{{ store.id }}_{{ item.product_id }}"
+                  value="{{ sale.amount_collected if sale else '' }}">
+              </td>
+              <td class="pending-cell text-muted">
+                {{ "%.2f"|format(sale.amount_pending) if sale else "" }}
+              </td>
+              {% endfor %}
+            </tr>
+            {% else %}
+            <tr><td colspan="{{ 2 + trip.items|length * 3 }}" class="text-center text-muted">No active stores on this route.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <button type="submit" class="btn btn-primary">Save Sales &amp; Collections</button>
+    </form>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">3. Returns — Quantity Returned (units)</div>
+  <div class="card-body">
+    <p class="text-muted small">Qty Returned is pre-filled automatically from Qty Sent − Qty already sold to stores. Only change it if the physical count differs (breakage, spoilage, etc).</p>
+    <form method="post" action="{{ url_for('trips.save_returns', trip_id=trip.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="table-responsive">
+        <table class="table align-middle" id="returnsTable">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Qty Sent (units)</th>
+              <th style="max-width:140px;">Qty Returned (units)</th>
+              <th>Qty Sold (auto)</th>
+              <th>Sale Value (auto)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in return_rows %}
+            {% set item = row.item %}
+            <tr>
+              <td>{{ item.product.name }}</td>
+              <td class="qty-sent-cell" data-qty-sent="{{ item.qty_sent }}">{{ item.qty_sent }}</td>
+              <td>
+                <input type="number" step="1" min="0" max="{{ item.qty_sent }}" class="form-control qty-returned-input"
+                  data-price="{{ item.product.price_per_unit }}"
+                  name="qty_returned_{{ item.id }}"
+                  value="{{ item.qty_returned if item.qty_returned is not none else row.suggested_return }}">
+              </td>
+              <td class="qty-sold-cell text-muted">{{ row.sold_from_stores }}</td>
+              <td class="sale-value-cell text-muted">
+                {{ "%.2f"|format(row.sold_from_stores * item.product.price_per_unit) }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <button type="submit" class="btn btn-primary">Save Returns</button>
+    </form>
+  </div>
+</div>
+{% else %}
+<p class="text-muted">Save dispatch quantities first to unlock per-store sales entry.</p>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/trip_entry.js') }}"></script>
+{% endblock %}

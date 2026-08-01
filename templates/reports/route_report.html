@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Route Report{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Route Report</h1>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-auto">
+    <select name="route_id" class="form-select" required>
+      <option value="">Select route</option>
+      {% for r in routes %}
+      <option value="{{ r.id }}" {% if route_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <input type="date" name="from" class="form-control" value="{{ date_from.isoformat() if date_from else '' }}">
+  </div>
+  <div class="col-auto">
+    <input type="date" name="to" class="form-control" value="{{ date_to.isoformat() if date_to else '' }}">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-outline-secondary">Show Report</button>
+  </div>
+</form>
+
+{% if result %}
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="card card-kpi"><div class="card-body">
+      <div class="text-muted small">Total Sale Value</div>
+      <div class="h4 mb-0">₹{{ "%.2f"|format(result.total_sale_value) }}</div>
+    </div></div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card card-kpi"><div class="card-body">
+      <div class="text-muted small">Total Collected</div>
+      <div class="h4 mb-0 balance-zero">₹{{ "%.2f"|format(result.total_collected) }}</div>
+    </div></div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card card-kpi"><div class="card-body">
+      <div class="text-muted small">Total Pending</div>
+      <div class="h4 mb-0 balance-positive">₹{{ "%.2f"|format(result.total_pending) }}</div>
+    </div></div>
+  </div>
+</div>
+
+<h2 class="h5">By Product</h2>
+<div class="table-responsive">
+  <table class="table table-striped bg-white">
+    <thead><tr><th>Product</th><th>Sent</th><th>Returned</th><th>Sold</th></tr></thead>
+    <tbody>
+      {% for name, t in result.product_totals.items() %}
+      <tr><td>{{ name }}</td><td>{{ t.sent }}</td><td>{{ t.returned }}</td><td>{{ t.sold }}</td></tr>
+      {% else %}
+      <tr><td colspan="4" class="text-center text-muted">No trips in this range.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2 class="h5 mt-4">By Store</h2>
+<div class="table-responsive">
+  <table class="table table-striped bg-white">
+    <thead><tr><th>Store</th><th>Sale Value</th><th>Collected</th><th>Pending</th></tr></thead>
+    <tbody>
+      {% for store, t in result.store_totals.items() %}
+      <tr>
+        <td><a href="{{ url_for('stores.store_profile', store_id=store.id) }}">{{ store.name }}</a></td>
+        <td>₹{{ "%.2f"|format(t.amount) }}</td>
+        <td>₹{{ "%.2f"|format(t.collected) }}</td>
+        <td>₹{{ "%.2f"|format(t.pending) }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="text-center text-muted">No sales in this range.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
