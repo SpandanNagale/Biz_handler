@@ -119,6 +119,66 @@
 </div>
 
 <div class="card mb-4">
+  <div class="card-header">2b. Off-Route Sales</div>
+  <div class="card-body">
+    <p class="text-muted small">For selling leftover stock to a store from a different route while out on this trip. It'll show up on that store's own profile page as usual.</p>
+
+    {% if adhoc_sales %}
+    <div class="table-responsive mb-3">
+      <table class="table table-sm align-middle">
+        <thead><tr><th>Store</th><th>Product</th><th>Qty</th><th>Amount</th><th>Collected</th><th>Pending</th></tr></thead>
+        <tbody>
+          {% for s in adhoc_sales %}
+          <tr>
+            <td><a href="{{ url_for('stores.store_profile', store_id=s.store_id) }}">{{ s.store.name }}</a></td>
+            <td>{{ s.product.name }}</td>
+            <td>{{ s.qty_sold }}</td>
+            <td>₹{{ "%.2f"|format(s.amount) }}</td>
+            <td>₹{{ "%.2f"|format(s.amount_collected) }}</td>
+            <td>₹{{ "%.2f"|format(s.amount_pending) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('trips.save_adhoc_sale', trip_id=trip.id) }}" class="row g-2 align-items-end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="col-md-3">
+        <label class="form-label small mb-0">Store</label>
+        <select name="store_id" class="form-select" required>
+          <option value="">Select store</option>
+          {% for s in adhoc_store_choices %}
+          <option value="{{ s.id }}">{{ s.name }}{{ (" (" ~ s.route.name ~ ")") if s.route else "" }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small mb-0">Product</label>
+        <select name="product_id" class="form-select" required>
+          <option value="">Select product</option>
+          {% for item in trip.items %}
+          <option value="{{ item.product_id }}">{{ item.product.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-0">Qty Sold</label>
+        <input type="number" step="1" min="1" name="qty_sold" class="form-control" required>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small mb-0">Collected</label>
+        <input type="number" step="0.01" min="0" name="collected" class="form-control">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-primary w-100">Add Sale</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card mb-4">
   <div class="card-header">3. Returns — Quantity Returned (units)</div>
   <div class="card-body">
     <p class="text-muted small">Qty Returned is pre-filled automatically from Qty Sent − Qty already sold to stores. Only change it if the physical count differs (breakage, spoilage, etc).</p>

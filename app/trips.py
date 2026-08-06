@@ -97,6 +97,12 @@ def trip_entry(trip_id):
     sales = StoreSale.query.filter_by(route_trip_id=trip.id, voided=False).all()
     sales_by_key = {(s.store_id, s.product_id): s for s in sales}
 
+    route_store_ids = {s.id for s in stores}
+    adhoc_sales = [s for s in sales if s.store_id not in route_store_ids]
+    adhoc_store_choices = (
+        Store.query.filter_by(active=True).order_by(Store.name).all()
+    )
+
     balances = {s.id: ledger.get_store_balance(s.id) for s in stores}
     recon = reconciliation.trip_reconciliation(trip)
 
@@ -128,6 +134,8 @@ def trip_entry(trip_id):
         recon=recon,
         return_rows=return_rows,
         effective_prices=effective_prices,
+        adhoc_sales=adhoc_sales,
+        adhoc_store_choices=adhoc_store_choices,
     )
 
 
@@ -185,6 +193,50 @@ def save_sales(trip_id):
         db.session.commit()
 
     flash("Store sales saved.", "success")
+    return redirect(url_for("trips.trip_entry", trip_id=trip.id))
+
+
+@trips_bp.route("/<int:trip_id>/sales/adhoc", methods=["POST"])
+def save_adhoc_sale(trip_id):
+    """Record a sale to a store not on this route — e.g. a driver sells leftover stock
+    to a store from a different route while out on this trip. The sale is stored the
+    same way as any other StoreSale, so it shows up on that store's own profile page."""
+    trip = RouteTrip.query.get_or_404(trip_id)
+
+    store_id = request.form.get("store_id", type=int)
+    product_id = request.form.get("product_id", type=int)
+    qty = _parse_int(request.form.get("qty_sold"))
+    collected = _parse_decimal(request.form.get("collected")) or Decimal("0")
+
+    store = Store.query.filter_by(id=store_id, active=True).first() if store_id else None
+    trip_product_ids = {item.product_id for item in trip.items}
+
+    if store is None:
+        flash("Select a valid store.", "danger")
+    elif product_id not in trip_product_ids:
+        flash("That product wasn't dispatched on this trip.", "danger")
+    elif not qty or qty <= 0:
+        flash("Enter a valid quantity sold.", "danger")
+    else:
+        existing = StoreSale.query.filter_by(
+            route_trip_id=trip.id, store_id=store_id, product_id=product_id, voided=False
+        ).first()
+        if existing:
+            ledger.update_store_sale(existing.id, qty_sold=qty, amount_collected=collected)
+        else:
+            ledger.record_store_sale(
+                route_trip_id=trip.id,
+                store_id=store_id,
+                product_id=product_id,
+                date=trip.date,
+                qty_sold=qty,
+                amount_collected=collected,
+            )
+        if trip.status == "loaded":
+            trip.status = "in_progress"
+            db.session.commit()
+        flash(f"Off-route sale to '{store.name}' saved.", "success")
+
     return redirect(url_for("trips.trip_entry", trip_id=trip.id))
 
 

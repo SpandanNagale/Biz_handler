@@ -83,3 +83,12 @@ def new_production():
     return render_template(
         "production/form.html", products=products, form_data={"date": business_today().isoformat()}
     )
+
+
+@production_bp.route("/<int:production_id>/delete", methods=["POST"])
+def delete_production(production_id):
+    production = Production.query.get_or_404(production_id)
+    db.session.delete(production)
+    db.session.commit()
+    flash("Production entry deleted.", "info")
+    return redirect(url_for("production.list_production"))

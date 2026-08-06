@@ -34,6 +34,7 @@
         <th>Product</th>
         <th>Quantity Produced (units)</th>
         <th>Notes</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -43,9 +44,16 @@
         <td>{{ log.product.name }}</td>
         <td>{{ log.quantity_produced }}</td>
         <td>{{ log.notes or "" }}</td>
+        <td class="text-end">
+          <form method="post" action="{{ url_for('production.delete_production', production_id=log.id) }}"
+            class="d-inline" onsubmit="return confirm('Delete this production entry? This cannot be undone.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+          </form>
+        </td>
       </tr>
       {% else %}
-      <tr><td colspan="4" class="text-center text-muted">No production entries found.</td></tr>
+      <tr><td colspan="5" class="text-center text-muted">No production entries found.</td></tr>
       {% endfor %}
     </tbody>
   </table>
