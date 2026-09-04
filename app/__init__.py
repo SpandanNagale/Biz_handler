@@ -35,7 +35,19 @@ def create_app(config_object="app.config.Config"):
     from app.extensions import csrf, db, limiter, login_manager, migrate
 
     db.init_app(app)
-    migrate.init_app(app, db)
+
+    # SQLite doesn't enforce FOREIGN KEY constraints unless told to per-connection.
+    if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite"):
+        from sqlalchemy import event
+        from sqlalchemy.engine import Engine
+
+        @event.listens_for(Engine, "connect")
+        def _enable_sqlite_fk(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
+    migrate.init_app(app, db, render_as_batch=True)
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
     limiter.init_app(app)

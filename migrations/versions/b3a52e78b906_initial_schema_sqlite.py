@@ -1,8 +1,8 @@
-"""initial schema
+"""initial schema (sqlite)
 
-Revision ID: dc3e3e5de02f
+Revision ID: b3a52e78b906
 Revises: 
-Create Date: 2026-07-23 00:11:07.734362
+Create Date: 2026-09-04 11:33:48.713354
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'dc3e3e5de02f'
+revision = 'b3a52e78b906'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -22,10 +22,11 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=120), nullable=False),
     sa.Column('unit_price', sa.Numeric(precision=10, scale=2), nullable=False),
-    sa.Column('packet_size', sa.Integer(), nullable=False),
-    sa.Column('packet_price', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('bulk_size', sa.Integer(), nullable=False),
+    sa.Column('bulk_price', sa.Numeric(precision=10, scale=2), nullable=False),
     sa.Column('active', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.CheckConstraint('bulk_size > 0', name='ck_product_bulk_size_positive'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('routes',
@@ -33,7 +34,7 @@ def upgrade():
     sa.Column('name', sa.String(length=120), nullable=False),
     sa.Column('weekday', sa.Integer(), nullable=False),
     sa.Column('active', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.CheckConstraint('weekday >= 0 AND weekday <= 6', name='ck_route_weekday_range'),
     sa.PrimaryKeyConstraint('id')
     )
@@ -41,9 +42,9 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('date', sa.Date(), nullable=False),
     sa.Column('product_id', sa.Integer(), nullable=False),
-    sa.Column('quantity_produced', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('quantity_produced', sa.Integer(), nullable=False),
     sa.Column('notes', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.CheckConstraint('quantity_produced >= 0', name='ck_production_qty_nonneg'),
     sa.ForeignKeyConstraint(['product_id'], ['products.id'], ),
     sa.PrimaryKeyConstraint('id')
@@ -56,7 +57,7 @@ def upgrade():
     sa.Column('route_id', sa.Integer(), nullable=False),
     sa.Column('date', sa.Date(), nullable=False),
     sa.Column('status', sa.String(length=20), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.CheckConstraint("status IN ('loaded', 'in_progress', 'completed')", name='ck_route_trip_status'),
     sa.ForeignKeyConstraint(['route_id'], ['routes.id'], ),
     sa.PrimaryKeyConstraint('id'),
@@ -72,7 +73,7 @@ def upgrade():
     sa.Column('area', sa.String(length=200), nullable=True),
     sa.Column('contact', sa.String(length=80), nullable=True),
     sa.Column('active', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.ForeignKeyConstraint(['route_id'], ['routes.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -80,8 +81,8 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('route_trip_id', sa.Integer(), nullable=False),
     sa.Column('product_id', sa.Integer(), nullable=False),
-    sa.Column('qty_sent', sa.Numeric(precision=10, scale=2), nullable=False),
-    sa.Column('qty_returned', sa.Numeric(precision=10, scale=2), nullable=True),
+    sa.Column('qty_sent', sa.Integer(), nullable=False),
+    sa.Column('qty_returned', sa.Integer(), nullable=True),
     sa.CheckConstraint('qty_returned IS NULL OR qty_returned <= qty_sent', name='ck_trip_item_returned_le_sent'),
     sa.CheckConstraint('qty_sent >= 0', name='ck_trip_item_qty_sent_nonneg'),
     sa.ForeignKeyConstraint(['product_id'], ['products.id'], ),
@@ -89,21 +90,34 @@ def upgrade():
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('route_trip_id', 'product_id', name='uq_trip_item_product')
     )
+    op.create_table('store_prices',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('store_id', sa.Integer(), nullable=False),
+    sa.Column('product_id', sa.Integer(), nullable=False),
+    sa.Column('price_per_unit', sa.Numeric(precision=10, scale=4), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.CheckConstraint('price_per_unit >= 0', name='ck_store_price_nonneg'),
+    sa.ForeignKeyConstraint(['product_id'], ['products.id'], ),
+    sa.ForeignKeyConstraint(['store_id'], ['stores.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('store_id', 'product_id', name='uq_store_price_store_product')
+    )
     op.create_table('store_sales',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('route_trip_id', sa.Integer(), nullable=False),
     sa.Column('store_id', sa.Integer(), nullable=False),
     sa.Column('product_id', sa.Integer(), nullable=False),
     sa.Column('date', sa.Date(), nullable=False),
-    sa.Column('qty_sold', sa.Numeric(precision=10, scale=2), nullable=False),
-    sa.Column('unit_price_snapshot', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('qty_sold', sa.Integer(), nullable=False),
+    sa.Column('unit_price_snapshot', sa.Numeric(precision=10, scale=4), nullable=False),
     sa.Column('amount', sa.Numeric(precision=12, scale=2), nullable=False),
     sa.Column('amount_collected', sa.Numeric(precision=12, scale=2), nullable=False),
     sa.Column('amount_pending', sa.Numeric(precision=12, scale=2), nullable=False),
     sa.Column('voided', sa.Boolean(), nullable=False),
     sa.Column('void_reason', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.CheckConstraint('amount >= 0', name='ck_store_sale_amount_nonneg'),
     sa.CheckConstraint('amount_collected >= 0', name='ck_store_sale_collected_nonneg'),
     sa.CheckConstraint('qty_sold >= 0', name='ck_store_sale_qty_nonneg'),
@@ -125,7 +139,7 @@ def upgrade():
     sa.Column('notes', sa.Text(), nullable=True),
     sa.Column('voided', sa.Boolean(), nullable=False),
     sa.Column('void_reason', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.CheckConstraint("type IN ('sale-linked', 'standalone collection', 'adjustment')", name='ck_payment_type'),
     sa.ForeignKeyConstraint(['linked_store_sale_id'], ['store_sales.id'], ),
     sa.ForeignKeyConstraint(['store_id'], ['stores.id'], ),
@@ -148,6 +162,7 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_store_sales_date'))
 
     op.drop_table('store_sales')
+    op.drop_table('store_prices')
     op.drop_table('route_trip_items')
     op.drop_table('stores')
     with op.batch_alter_table('route_trips', schema=None) as batch_op:
