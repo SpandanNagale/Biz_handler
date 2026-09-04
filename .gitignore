@@ -26,6 +26,8 @@ desktop.ini
 # Vercel
 .vercel/
 
-# Local SQLite (if ever used for quick local testing instead of Supabase)
+# Local SQLite database — this is real business data, not committed to git.
+# Back it up yourself (copy the file) on a regular schedule.
+instance/
 *.db
 *.sqlite3
