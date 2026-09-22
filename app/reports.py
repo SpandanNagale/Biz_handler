@@ -84,14 +84,17 @@ def stock_dashboard():
         dispatched = Decimal(dispatched_q.scalar())
         returned = Decimal(returned_q.scalar())
 
+        sold = dispatched - returned
         rows.append(
             {
                 "product": p,
                 "produced": produced,
                 "dispatched": dispatched,
                 "returned": returned,
-                "sold": dispatched - returned,
-                "warehouse_stock": produced - dispatched,
+                "sold": sold,
+                # True physical stock on hand: never-dispatched stock PLUS what came back
+                # from routes. (produced - dispatched) alone ignores returns.
+                "remaining": produced - sold,
             }
         )
 
@@ -123,12 +126,13 @@ def route_report():
             for item in t.items:
                 pt = product_totals.setdefault(
                     item.product.name,
-                    {"sent": Decimal("0"), "returned": Decimal("0"), "sold": Decimal("0")},
+                    {"sent": Decimal("0"), "returned": Decimal("0"), "sold": Decimal("0"), "sale_value": Decimal("0")},
                 )
                 pt["sent"] += item.qty_sent
                 if item.qty_returned is not None:
                     pt["returned"] += item.qty_returned
                     pt["sold"] += item.qty_sold
+                    pt["sale_value"] += item.qty_sold * item.product.price_per_unit
 
         sales = (
             StoreSale.query.filter(

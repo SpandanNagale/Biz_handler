@@ -2,29 +2,22 @@ document.addEventListener("DOMContentLoaded", () => {
   const table = document.getElementById("salesTable");
   if (!table) return;
 
-  function updatePendingCell(row) {
+  function updateRowTotals(row) {
+    let totalAmount = 0;
     row.querySelectorAll(".qty-input").forEach((qtyInput) => {
-      const cell = qtyInput.closest("td");
-      const collectedInput = cell.nextElementSibling.querySelector(".collected-input");
-      const pendingCell = collectedInput.closest("td").nextElementSibling;
-
       const price = parseFloat(qtyInput.dataset.price || "0");
       const qty = parseFloat(qtyInput.value || "0");
-      const collected = parseFloat(collectedInput.value || "0");
-
-      if (!qtyInput.value) {
-        pendingCell.textContent = "";
-        return;
-      }
-      const amount = qty * price;
-      const pending = amount - collected;
-      pendingCell.textContent = pending.toFixed(2);
+      totalAmount += qty * price;
     });
+
+    const collected = parseFloat(row.querySelector(".store-collected-input").value || "0");
+    row.querySelector(".row-total-amount").textContent = "₹" + totalAmount.toFixed(2);
+    row.querySelector(".row-total-pending").textContent = "₹" + (totalAmount - collected).toFixed(2);
   }
 
   table.querySelectorAll("tbody tr").forEach((row) => {
-    row.querySelectorAll(".qty-input, .collected-input").forEach((input) => {
-      input.addEventListener("input", () => updatePendingCell(row));
+    row.querySelectorAll(".qty-input, .store-collected-input").forEach((input) => {
+      input.addEventListener("input", () => updateRowTotals(row));
     });
   });
 });

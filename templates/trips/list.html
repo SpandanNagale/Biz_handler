@@ -29,10 +29,11 @@
 <div class="table-responsive">
   <table class="table table-striped bg-white align-middle">
     <thead>
-      <tr><th>Date</th><th>Route</th><th>Status</th><th></th></tr>
+      <tr><th>Date</th><th>Route</th><th>Status</th><th>Qty Returned</th><th>Sale Value</th><th></th></tr>
     </thead>
     <tbody>
       {% for t in trips %}
+      {% set tt = trip_totals[t.id] %}
       <tr>
         <td>{{ t.date.isoformat() }}</td>
         <td>{{ t.route.name }}</td>
@@ -41,12 +42,14 @@
           {% elif t.status == 'in_progress' %}<span class="badge bg-warning text-dark">In Progress</span>
           {% else %}<span class="badge bg-secondary">Loaded</span>{% endif %}
         </td>
+        <td>{{ tt.returned if tt.returned is not none else "—" }}</td>
+        <td>{{ "₹%.2f"|format(tt.sale_value) if tt.sale_value is not none else "—" }}</td>
         <td class="text-end">
           <a href="{{ url_for('trips.trip_entry', trip_id=t.id) }}" class="btn btn-sm btn-outline-primary">Open</a>
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="4" class="text-center text-muted">No route trips found.</td></tr>
+      <tr><td colspan="6" class="text-center text-muted">No route trips found.</td></tr>
       {% endfor %}
     </tbody>
   </table>

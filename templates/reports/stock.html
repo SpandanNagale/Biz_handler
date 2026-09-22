@@ -22,8 +22,7 @@
         <th>Product</th>
         <th>Produced</th>
         <th>Dispatched</th>
-        <th>Warehouse Stock</th>
-        <th>Returned</th>
+        <th>Remaining</th>
         <th>Sold</th>
       </tr>
     </thead>
@@ -33,15 +32,14 @@
         <td>{{ row.product.name }}</td>
         <td>{{ row.produced }}</td>
         <td>{{ row.dispatched }}</td>
-        <td>{{ row.warehouse_stock }}</td>
-        <td>{{ row.returned }}</td>
+        <td>{{ row.remaining }}</td>
         <td>{{ row.sold }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="text-center text-muted">No products yet.</td></tr>
+      <tr><td colspan="5" class="text-center text-muted">No products yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
-<p class="text-muted small">Warehouse Stock = Produced − Dispatched. Sold = Dispatched − Returned (returns not yet entered count as 0, so Sold is provisional until a trip is fully reconciled).</p>
+<p class="text-muted small">Remaining = Produced − Sold (stock never dispatched, plus stock returned from routes). Sold = Dispatched − Returned, provisional until a trip's returns are entered. See <a href="{{ url_for('reports.route_report') }}">Route Report</a> or a route's trips for the return/sold breakdown.</p>
 {% endblock %}

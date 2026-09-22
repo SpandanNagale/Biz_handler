@@ -48,12 +48,12 @@
 <h2 class="h5">By Product</h2>
 <div class="table-responsive">
   <table class="table table-striped bg-white">
-    <thead><tr><th>Product</th><th>Sent</th><th>Returned</th><th>Sold</th></tr></thead>
+    <thead><tr><th>Product</th><th>Sent</th><th>Returned</th><th>Sold</th><th>Sale Value</th></tr></thead>
     <tbody>
       {% for name, t in result.product_totals.items() %}
-      <tr><td>{{ name }}</td><td>{{ t.sent }}</td><td>{{ t.returned }}</td><td>{{ t.sold }}</td></tr>
+      <tr><td>{{ name }}</td><td>{{ t.sent }}</td><td>{{ t.returned }}</td><td>{{ t.sold }}</td><td>₹{{ "%.2f"|format(t.sale_value) }}</td></tr>
       {% else %}
-      <tr><td colspan="4" class="text-center text-muted">No trips in this range.</td></tr>
+      <tr><td colspan="5" class="text-center text-muted">No trips in this range.</td></tr>
       {% endfor %}
     </tbody>
   </table>

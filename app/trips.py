@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
@@ -54,9 +55,22 @@ def list_trips():
 
     trips = query.order_by(RouteTrip.date.desc()).all()
     routes = Route.query.order_by(Route.name).all()
+
+    # Detailed return qty / sale value per trip, so this list doesn't require opening
+    # each trip just to see what came back and what it was worth.
+    trip_totals = {}
+    for t in trips:
+        if t.items and all(i.qty_returned is not None for i in t.items):
+            trip_totals[t.id] = {
+                "returned": sum(i.qty_returned for i in t.items),
+                "sale_value": sum((i.qty_sold * i.product.price_per_unit for i in t.items), Decimal("0")),
+            }
+        else:
+            trip_totals[t.id] = {"returned": None, "sale_value": None}
+
     return render_template(
         "trips/list.html", trips=trips, routes=routes, route_id=route_id,
-        date_from=date_from, date_to=date_to,
+        date_from=date_from, date_to=date_to, trip_totals=trip_totals,
     )
 
 
@@ -106,6 +120,20 @@ def trip_entry(trip_id):
     balances = {s.id: ledger.get_store_balance(s.id) for s in stores}
     recon = reconciliation.trip_reconciliation(trip)
 
+    # Grand total per store (across all products on this trip) + whole-trip totals,
+    # so the office person doesn't have to add up the per-product columns by hand.
+    store_totals = defaultdict(lambda: {"amount": Decimal("0"), "collected": Decimal("0"), "pending": Decimal("0")})
+    for s in sales:
+        t = store_totals[s.store_id]
+        t["amount"] += s.amount
+        t["collected"] += s.amount_collected
+        t["pending"] += s.amount_pending
+    trip_totals = {
+        "amount": sum((s.amount for s in sales), Decimal("0")),
+        "collected": sum((s.amount_collected for s in sales), Decimal("0")),
+        "pending": sum((s.amount_pending for s in sales), Decimal("0")),
+    }
+
     effective_prices = {
         (store.id, item.product_id): ledger.get_effective_price(store.id, item.product_id)
         for store in stores
@@ -132,6 +160,8 @@ def trip_entry(trip_id):
         sales_by_key=sales_by_key,
         balances=balances,
         recon=recon,
+        store_totals=store_totals,
+        trip_totals=trip_totals,
         return_rows=return_rows,
         effective_prices=effective_prices,
         adhoc_sales=adhoc_sales,
@@ -165,11 +195,10 @@ def save_sales(trip_id):
     stores = [s for s in trip.route.stores if s.active]
 
     any_sale = False
-    for item in trip.items:
-        for store in stores:
+    for store in stores:
+        for item in trip.items:
             prefix = f"{store.id}_{item.product_id}"
             qty = _parse_int(request.form.get(f"qty_sold_{prefix}"))
-            collected = _parse_decimal(request.form.get(f"collected_{prefix}")) or Decimal("0")
             if qty is None:
                 continue
             any_sale = True
@@ -177,7 +206,7 @@ def save_sales(trip_id):
                 route_trip_id=trip.id, store_id=store.id, product_id=item.product_id, voided=False
             ).first()
             if existing:
-                ledger.update_store_sale(existing.id, qty_sold=qty, amount_collected=collected)
+                ledger.update_store_sale(existing.id, qty_sold=qty)
             else:
                 ledger.record_store_sale(
                     route_trip_id=trip.id,
@@ -185,8 +214,22 @@ def save_sales(trip_id):
                     product_id=item.product_id,
                     date=trip.date,
                     qty_sold=qty,
-                    amount_collected=collected,
+                    amount_collected=0,
                 )
+
+        # Money collected is one lump sum per store visit, not itemized per product.
+        # ponytail: dumped onto the first line item (rest zeroed) so the STORE total
+        # stays exact; only that one line's own amount_collected looks lopsided if
+        # inspected in isolation. Upgrade path: split proportionally if that matters.
+        collected = _parse_decimal(request.form.get(f"store_collected_{store.id}"))
+        if collected is not None:
+            store_sales = StoreSale.query.filter_by(
+                route_trip_id=trip.id, store_id=store.id, voided=False
+            ).order_by(StoreSale.id).all()
+            if store_sales:
+                ledger.update_store_sale(store_sales[0].id, amount_collected=collected)
+                for s in store_sales[1:]:
+                    ledger.update_store_sale(s.id, amount_collected=Decimal("0"))
 
     if any_sale and trip.status == "loaded":
         trip.status = "in_progress"
