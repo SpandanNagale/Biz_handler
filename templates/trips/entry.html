@@ -54,6 +54,27 @@
 </div>
 
 {% if trip.items %}
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="card card-kpi"><div class="card-body">
+      <div class="text-muted small">Trip Total Sale Value</div>
+      <div class="h4 mb-0">₹{{ "%.2f"|format(trip_totals.amount) }}</div>
+    </div></div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card card-kpi"><div class="card-body">
+      <div class="text-muted small">Trip Total Collected</div>
+      <div class="h4 mb-0 balance-zero">₹{{ "%.2f"|format(trip_totals.collected) }}</div>
+    </div></div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card card-kpi"><div class="card-body">
+      <div class="text-muted small">Trip Total Pending</div>
+      <div class="h4 mb-0 balance-positive">₹{{ "%.2f"|format(trip_totals.pending) }}</div>
+    </div></div>
+  </div>
+</div>
+
 <div class="card mb-4">
   <div class="card-header">2. Per-Store Sales &amp; Collections</div>
   <div class="card-body">
@@ -63,20 +84,19 @@
         <table class="table align-middle table-sm" id="salesTable">
           <thead>
             <tr>
-              <th rowspan="2">Store</th>
-              <th rowspan="2">Current Balance</th>
+              <th>Store</th>
+              <th>Current Balance</th>
               {% for item in trip.items %}
-              <th colspan="3" class="text-center">{{ item.product.name }}</th>
+              <th>{{ item.product.name }} — Qty Sold</th>
               {% endfor %}
-            </tr>
-            <tr>
-              {% for item in trip.items %}
-              <th>Qty Sold (units)</th><th>Collected</th><th>Pending</th>
-              {% endfor %}
+              <th>Total Amount</th>
+              <th>Collected (this visit)</th>
+              <th>Pending</th>
             </tr>
           </thead>
           <tbody>
             {% for store in stores %}
+            {% set st = store_totals[store.id] %}
             <tr>
               <td><a href="{{ url_for('stores.store_profile', store_id=store.id) }}">{{ store.name }}</a></td>
               <td class="{{ 'balance-positive' if balances[store.id] > 0 else 'balance-zero' }}">
@@ -89,26 +109,18 @@
                 <input type="number" step="1" min="0" class="form-control qty-input"
                   data-price="{{ price }}"
                   name="qty_sold_{{ store.id }}_{{ item.product_id }}"
-                  value="{{ sale.qty_sold if sale else '' }}"
-                  {% if price != item.product.price_per_unit %}
-                  title="Custom price for this store: ₹{{ '%.4f'|format(price) }}/unit (normal: ₹{{ '%.4f'|format(item.product.price_per_unit) }})"
-                  {% endif %}>
-                {% if price != item.product.price_per_unit %}
-                <span class="badge bg-info text-dark" title="Custom price: ₹{{ '%.4f'|format(price) }}/unit">₹{{ '%.2f'|format(price) }}</span>
-                {% endif %}
-              </td>
-              <td>
-                <input type="number" step="0.01" min="0" class="form-control collected-input"
-                  name="collected_{{ store.id }}_{{ item.product_id }}"
-                  value="{{ sale.amount_collected if sale else '' }}">
-              </td>
-              <td class="pending-cell text-muted">
-                {{ "%.2f"|format(sale.amount_pending) if sale else "" }}
+                  value="{{ sale.qty_sold if sale else '' }}">
               </td>
               {% endfor %}
+              <td class="row-total-amount fw-semibold">₹{{ "%.2f"|format(st.amount) }}</td>
+              <td>
+                <input type="number" step="0.01" min="0" class="form-control store-collected-input"
+                  name="store_collected_{{ store.id }}" value="{{ st.collected }}">
+              </td>
+              <td class="row-total-pending fw-semibold {{ 'balance-positive' if st.pending > 0 else '' }}">₹{{ "%.2f"|format(st.pending) }}</td>
             </tr>
             {% else %}
-            <tr><td colspan="{{ 2 + trip.items|length * 3 }}" class="text-center text-muted">No active stores on this route.</td></tr>
+            <tr><td colspan="{{ 5 + trip.items|length }}" class="text-center text-muted">No active stores on this route.</td></tr>
             {% endfor %}
           </tbody>
         </table>
