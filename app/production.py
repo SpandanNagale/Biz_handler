@@ -42,6 +42,63 @@ def list_production():
     )
 
 
+@production_bp.route("/day", methods=["GET", "POST"])
+def day_entry():
+    """Bulk entry: pick one date, see every active product in a single grid, and enter
+    each product's quantity in one save — instead of submitting the single-product form
+    once per product for the same date."""
+    if request.method == "POST":
+        entry_date = _parse_date(request.form.get("date", ""))
+        if not entry_date:
+            flash("A valid date is required.", "danger")
+            return redirect(url_for("production.day_entry"))
+
+        products = Product.query.filter_by(active=True).all()
+        for product in products:
+            raw_qty = request.form.get(f"quantity_produced_{product.id}", "").strip()
+            if raw_qty == "":
+                continue
+            try:
+                quantity = int(raw_qty)
+            except ValueError:
+                flash(f"'{product.name}': quantity must be a whole number — skipped.", "danger")
+                continue
+            if quantity < 0:
+                flash(f"'{product.name}': quantity cannot be negative — skipped.", "danger")
+                continue
+
+            notes = request.form.get(f"notes_{product.id}", "").strip() or None
+
+            existing = Production.query.filter_by(date=entry_date, product_id=product.id).first()
+            if existing:
+                existing.quantity_produced = quantity
+                existing.notes = notes
+            else:
+                db.session.add(
+                    Production(
+                        date=entry_date, product_id=product.id,
+                        quantity_produced=quantity, notes=notes,
+                    )
+                )
+
+        db.session.commit()
+        flash(f"Production saved for {entry_date.isoformat()}.", "success")
+        return redirect(url_for("production.day_entry", date=entry_date.isoformat()))
+
+    entry_date = _parse_date(request.args.get("date", "")) or business_today()
+    products = Product.query.filter_by(active=True).order_by(Product.name).all()
+    entries_by_product = {
+        log.product_id: log for log in Production.query.filter_by(date=entry_date).all()
+    }
+
+    return render_template(
+        "production/day_entry.html",
+        date=entry_date,
+        products=products,
+        entries_by_product=entries_by_product,
+    )
+
+
 @production_bp.route("/new", methods=["GET", "POST"])
 def new_production():
     products = Product.query.filter_by(active=True).order_by(Product.name).all()

@@ -137,6 +137,9 @@ class RouteTripItem(db.Model):
     qty_sent = db.Column(db.Integer, nullable=False)  # individual units
     # NULL = not yet reconciled at day's end; distinct from a confirmed 0.
     qty_returned = db.Column(db.Integer, nullable=True)
+    # Units within qty_returned that came back broken/spoiled — physically present but
+    # not sellable. Always a subset of qty_returned, not a separate physical count.
+    qty_damaged = db.Column(db.Integer, nullable=False, server_default="0", default=0)
 
     route_trip = db.relationship("RouteTrip", back_populates="items")
     product = db.relationship("Product")
@@ -148,7 +151,18 @@ class RouteTripItem(db.Model):
             "qty_returned IS NULL OR qty_returned <= qty_sent",
             name="ck_trip_item_returned_le_sent",
         ),
+        db.CheckConstraint("qty_damaged >= 0", name="ck_trip_item_damaged_nonneg"),
+        db.CheckConstraint(
+            "qty_returned IS NULL OR qty_damaged <= qty_returned",
+            name="ck_trip_item_damaged_le_returned",
+        ),
     )
+
+    @property
+    def qty_returned_good(self):
+        if self.qty_returned is None:
+            return None
+        return self.qty_returned - self.qty_damaged
 
     @property
     def qty_sold(self):

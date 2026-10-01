@@ -25,5 +25,11 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = os.environ.get("FLASK_ENV") != "development"
 
+    # A trip entry page can stay open for a whole route run (several hours) with
+    # autosave quietly posting in the background. Flask-WTF's default CSRF token
+    # lifetime is 1 hour, which would start rejecting those posts mid-route — so
+    # it's extended to cover a full working day instead.
+    WTF_CSRF_TIME_LIMIT = 28800
+
     # Fixed business timezone for "today" calculations (dashboard, defaults).
     BUSINESS_TIMEZONE = "Asia/Kolkata"

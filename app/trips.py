@@ -39,6 +39,13 @@ def _parse_int(value):
         return None
 
 
+def _is_autosave():
+    """Background autosave posts (fetch/sendBeacon from trip_entry.js) carry this flag
+    so they skip the flash message + redirect a real form submit needs — otherwise every
+    keystroke-triggered save would queue up a flash banner for the next page load."""
+    return request.form.get("autosave") == "1"
+
+
 @trips_bp.route("/")
 def list_trips():
     route_id = request.args.get("route_id", type=int)
@@ -185,6 +192,8 @@ def save_dispatch(trip_id):
             db.session.add(RouteTripItem(route_trip_id=trip.id, product_id=product.id, qty_sent=qty))
 
     db.session.commit()
+    if _is_autosave():
+        return ("", 204)
     flash("Dispatch quantities saved.", "success")
     return redirect(url_for("trips.trip_entry", trip_id=trip.id))
 
@@ -235,6 +244,8 @@ def save_sales(trip_id):
         trip.status = "in_progress"
         db.session.commit()
 
+    if _is_autosave():
+        return ("", 204)
     flash("Store sales saved.", "success")
     return redirect(url_for("trips.trip_entry", trip_id=trip.id))
 
@@ -292,9 +303,15 @@ def save_returns(trip_id):
         if qty is not None:
             item.qty_returned = qty
 
+        damaged = _parse_int(request.form.get(f"qty_damaged_{item.id}"))
+        if damaged is not None:
+            item.qty_damaged = damaged
+
     if trip.items and all(i.qty_returned is not None for i in trip.items):
         trip.status = "completed"
 
     db.session.commit()
+    if _is_autosave():
+        return ("", 204)
     flash("Returns saved.", "success")
     return redirect(url_for("trips.trip_entry", trip_id=trip.id))

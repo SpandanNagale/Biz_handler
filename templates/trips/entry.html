@@ -29,7 +29,7 @@
 <div class="card mb-4">
   <div class="card-header">1. Dispatch — Quantity Sent (units)</div>
   <div class="card-body">
-    <form method="post" action="{{ url_for('trips.save_dispatch', trip_id=trip.id) }}">
+    <form method="post" action="{{ url_for('trips.save_dispatch', trip_id=trip.id) }}" id="dispatchForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="table-responsive">
         <table class="table align-middle">
@@ -114,10 +114,19 @@
               {% endfor %}
               <td class="row-total-amount fw-semibold">₹{{ "%.2f"|format(st.amount) }}</td>
               <td>
-                <input type="number" step="0.01" min="0" class="form-control store-collected-input"
-                  name="store_collected_{{ store.id }}" value="{{ st.collected }}">
+                <div class="input-group">
+                  <input type="number" step="0.01" min="0" class="form-control store-collected-input"
+                    name="store_collected_{{ store.id }}" value="{{ st.collected }}">
+                  <button type="button" class="btn btn-outline-success mark-paid-btn">Paid</button>
+                </div>
               </td>
-              <td class="row-total-pending fw-semibold {{ 'balance-positive' if st.pending > 0 else '' }}">₹{{ "%.2f"|format(st.pending) }}</td>
+              <td class="row-total-pending fw-semibold {{ 'balance-positive' if st.pending > 0 else '' }}">
+                {% if st.pending < 0 %}
+                  <span class="text-success">Paid in full (+₹{{ "%.2f"|format(-st.pending) }} credited to balance)</span>
+                {% else %}
+                  ₹{{ "%.2f"|format(st.pending) }}
+                {% endif %}
+              </td>
             </tr>
             {% else %}
             <tr><td colspan="{{ 5 + trip.items|length }}" class="text-center text-muted">No active stores on this route.</td></tr>
@@ -193,8 +202,8 @@
 <div class="card mb-4">
   <div class="card-header">3. Returns — Quantity Returned (units)</div>
   <div class="card-body">
-    <p class="text-muted small">Qty Returned is pre-filled automatically from Qty Sent − Qty already sold to stores. Only change it if the physical count differs (breakage, spoilage, etc).</p>
-    <form method="post" action="{{ url_for('trips.save_returns', trip_id=trip.id) }}">
+    <p class="text-muted small">Qty Returned is pre-filled automatically from Qty Sent − Qty already sold to stores. Only change it if the physical count differs (breakage, spoilage, etc). Damaged is how many of those returned units are unsellable (broken/spoiled) — it must be no more than Qty Returned.</p>
+    <form method="post" action="{{ url_for('trips.save_returns', trip_id=trip.id) }}" id="returnsForm">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="table-responsive">
         <table class="table align-middle" id="returnsTable">
@@ -203,6 +212,7 @@
               <th>Product</th>
               <th>Qty Sent (units)</th>
               <th style="max-width:140px;">Qty Returned (units)</th>
+              <th style="max-width:140px;">Damaged (units)</th>
               <th>Qty Sold (auto)</th>
               <th>Sale Value (auto)</th>
             </tr>
@@ -218,6 +228,11 @@
                   data-price="{{ item.product.price_per_unit }}"
                   name="qty_returned_{{ item.id }}"
                   value="{{ item.qty_returned if item.qty_returned is not none else row.suggested_return }}">
+              </td>
+              <td>
+                <input type="number" step="1" min="0" class="form-control qty-damaged-input"
+                  name="qty_damaged_{{ item.id }}"
+                  value="{{ item.qty_damaged }}">
               </td>
               <td class="qty-sold-cell text-muted">{{ row.sold_from_stores }}</td>
               <td class="sale-value-cell text-muted">

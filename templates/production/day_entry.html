@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Daily Production Entry{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Daily Production Entry</h1>
+  <div>
+    <a href="{{ url_for('production.new_production') }}" class="btn btn-outline-secondary btn-sm">+ Single Entry</a>
+    <a href="{{ url_for('production.list_production') }}" class="btn btn-outline-secondary btn-sm">View Log</a>
+  </div>
+</div>
+
+<form method="get" class="row g-2 mb-4 align-items-end">
+  <div class="col-auto">
+    <label class="form-label small mb-0">Date</label>
+    <input type="date" name="date" class="form-control" value="{{ date.isoformat() }}" onchange="this.form.submit()">
+  </div>
+</form>
+
+<div class="card">
+  <div class="card-header">Production for {{ date.isoformat() }}</div>
+  <div class="card-body">
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="date" value="{{ date.isoformat() }}">
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th style="max-width:160px;">Quantity Produced (units)</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in products %}
+            {% set existing = entries_by_product.get(p.id) %}
+            <tr>
+              <td>{{ p.name }}</td>
+              <td>
+                <input type="number" step="1" min="0" class="form-control"
+                  name="quantity_produced_{{ p.id }}"
+                  value="{{ existing.quantity_produced if existing else '' }}">
+              </td>
+              <td>
+                <input type="text" class="form-control form-control-sm"
+                  name="notes_{{ p.id }}"
+                  value="{{ existing.notes if existing and existing.notes else '' }}">
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted">No active products.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="text-muted small">Leave a product blank to skip it. An existing entry for this date is only changed if you edit its row.</p>
+      <button type="submit" class="btn btn-primary">Save Production for {{ date.isoformat() }}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

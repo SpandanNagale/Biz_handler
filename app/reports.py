@@ -70,19 +70,27 @@ def stock_dashboard():
             .join(RouteTrip)
             .filter(RouteTripItem.product_id == p.id, RouteTripItem.qty_returned.isnot(None))
         )
+        damaged_q = (
+            db.session.query(func.coalesce(func.sum(RouteTripItem.qty_damaged), 0))
+            .join(RouteTrip)
+            .filter(RouteTripItem.product_id == p.id, RouteTripItem.qty_returned.isnot(None))
+        )
 
         if date_from:
             produced_q = produced_q.filter(Production.date >= date_from)
             dispatched_q = dispatched_q.filter(RouteTrip.date >= date_from)
             returned_q = returned_q.filter(RouteTrip.date >= date_from)
+            damaged_q = damaged_q.filter(RouteTrip.date >= date_from)
         if date_to:
             produced_q = produced_q.filter(Production.date <= date_to)
             dispatched_q = dispatched_q.filter(RouteTrip.date <= date_to)
             returned_q = returned_q.filter(RouteTrip.date <= date_to)
+            damaged_q = damaged_q.filter(RouteTrip.date <= date_to)
 
         produced = Decimal(produced_q.scalar())
         dispatched = Decimal(dispatched_q.scalar())
         returned = Decimal(returned_q.scalar())
+        damaged = Decimal(damaged_q.scalar())
 
         sold = dispatched - returned
         rows.append(
@@ -91,10 +99,11 @@ def stock_dashboard():
                 "produced": produced,
                 "dispatched": dispatched,
                 "returned": returned,
+                "damaged": damaged,
                 "sold": sold,
-                # True physical stock on hand: never-dispatched stock PLUS what came back
-                # from routes. (produced - dispatched) alone ignores returns.
-                "remaining": produced - sold,
+                # True SELLABLE stock on hand: never-dispatched stock PLUS what came back
+                # from routes, MINUS units that came back damaged/spoiled and can't be resold.
+                "remaining": produced - sold - damaged,
             }
         )
 
